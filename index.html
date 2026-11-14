@@ -81,6 +81,14 @@ nav button.on{color:var(--accent)}
 #toast{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));background:#000d;color:#fff;
   padding:10px 12px;border-radius:12px;font-size:13px;display:none;z-index:9;word-break:break-word}
 .note{font-size:12px;color:var(--hint);margin-top:8px}
+.note.ok{color:var(--accent)} .note.err{color:var(--danger)}
+.bar{height:8px;border-radius:99px;background:var(--bg);margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .2s}
+button.b:disabled{opacity:.45}
+.vid{padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+.vid:first-child{border-top:0}
+.vid .m{font-size:11.5px;color:var(--hint)}
+.vid a{color:var(--accent)}
 .hide{display:none!important}
 </style>
 </head>
@@ -156,13 +164,35 @@ nav button.on{color:var(--accent)}
   <div class="card">
     <h2>🎬 Видео → пост в Instagram</h2>
     <p class="d">W2W-монтаж: паузы, субтитры, графика, музыка, обложка.</p>
-    <ol class="steps">
-      <li>Нажми кнопку ниже — панель закроется.</li>
-      <li>Отправь видео в чат (в подписи можно дать указание: «обрежь последние 5 секунд»).</li>
-      <li>Через ~35–45 минут придёт превью. Публикация — только по кнопке 📤.</li>
-    </ol>
-    <button class="b p w" id="video">🎬 Запустить видео</button>
-    <div class="note">Файл уходит через чат: Telegram не даёт мини-аппу передать видео боту напрямую.</div>
+    <div id="upBox" class="hide">
+      <input type="file" id="upFile" accept="video/*" class="hide">
+      <button class="b w" id="upPick">📁 Выбрать видео</button>
+      <div class="note hide" id="upName"></div>
+      <label class="f">Указание (необязательно)</label>
+      <input type="text" id="upNote" placeholder="Например: обрежь последние 5 секунд">
+      <div class="grid2" style="margin-top:8px">
+        <button class="b p" id="upEdit">✂️ W2W-монтаж<small>~40 мин → превью</small></button>
+        <button class="b" id="upAsis">📤 Без монтажа<small>сразу в Instagram</small></button>
+      </div>
+      <div class="bar hide" id="upBar"><i id="upFill"></i></div>
+      <div class="note" id="upMsg">Монтаж: превью придёт в чат, публикация — только по кнопке 📤 под ним.</div>
+    </div>
+    <div id="upOff">
+      <ol class="steps">
+        <li>Нажми кнопку ниже — панель закроется.</li>
+        <li>Отправь видео в чат (в подписи можно дать указание: «обрежь последние 5 секунд»).</li>
+        <li>Бот спросит: монтаж или сразу в Instagram. Публикация — только по твоей кнопке.</li>
+      </ol>
+      <button class="b p w" id="video">🎬 Отправить видео через чат</button>
+      <div class="note" id="upOffNote">Загрузка прямо отсюда появится после 🔄 (нужна связь с сервером).</div>
+    </div>
+  </div>
+
+  <div class="card hide" id="vidCard">
+    <h2>🎞 Мои видео</h2>
+    <p class="d">Последние видео и на каком они этапе.</p>
+    <div id="vids"><div class="empty">Загружаю…</div></div>
+    <button class="b w" style="margin-top:8px" id="vidReload">Обновить список</button>
   </div>
 
   <div class="card">
@@ -548,9 +578,134 @@ $("acGenBtn").onclick = function(){
   cmd("/academy gen " + r);
 };
 
+// ---- video upload straight from the panel (server API behind a tunnel; address + ticket come in the snapshot)
+var up = {file:null, busy:false};
+function api(path, opt){
+  opt = opt || {};
+  opt.headers = Object.assign({"X-JAI-Ticket": S.tk || ""}, opt.headers || {});
+  return fetch(S.api + path, opt).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(j){ j.http = r.status; return j; });
+  });
+}
+function upMsg(text, cls){ var m = $("upMsg"); m.textContent = text; m.className = "note" + (cls ? " " + cls : ""); }
+function upProgress(done, total){
+  $("upBar").classList.remove("hide");
+  $("upFill").style.width = (total ? Math.round(done / total * 100) : 0) + "%";
+}
+function mb(n){ return (n / 1048576).toFixed(n > 104857600 ? 0 : 1) + " МБ"; }
+function setBusy(b){ up.busy = b; ["upPick","upEdit","upAsis"].forEach(function(id){ $(id).disabled = b; }); }
+
+function initUpload(){
+  var on = !!(S.api && S.tk);
+  $("upBox").classList.toggle("hide", !on);
+  $("upOff").classList.toggle("hide", on);
+  $("vidCard").classList.toggle("hide", !on);
+  if (!on) return;
+  api("/ping").then(function(j){
+    if (j.ok) { loadVideos(); return; }
+    throw new Error(j.http === 401 ? "ticket" : "down");
+  }).catch(function(e){
+    $("upBox").classList.add("hide"); $("upOff").classList.remove("hide"); $("vidCard").classList.add("hide");
+    $("upOffNote").textContent = (e.message === "ticket" ? "Доступ к загрузке устарел" : "Адрес сервера обновился") +
+      " — нажми 🔄 вверху и открой панель заново. Пока можно через чат.";
+  });
+}
+$("upPick").onclick = function(){ if (!up.busy) $("upFile").click(); };
+$("upFile").onchange = function(){
+  up.file = $("upFile").files[0] || null;
+  $("upName").classList.toggle("hide", !up.file);
+  if (up.file) { $("upName").textContent = up.file.name + " · " + mb(up.file.size); upMsg("Выбери, что сделать с видео."); }
+};
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function sendChunks(id, file, chunk){
+  var offset = 0, fails = 0;
+  function next(){
+    if (offset >= file.size) return Promise.resolve();
+    return api("/upload/chunk?id=" + id + "&offset=" + offset, {method:"POST", body:file.slice(offset, offset + chunk),
+               headers:{"Content-Type":"application/octet-stream"}})
+      .then(function(j){
+        if (j.ok || j.http === 409) {                       // 409 = server tells where it really is
+          if (typeof j.received !== "number") throw new Error("offset");
+          if (j.ok) fails = 0; else if (++fails > 5) throw new Error("offset");
+          offset = j.received; upProgress(offset, file.size);
+          upMsg("Загружаю: " + mb(offset) + " из " + mb(file.size) + ". Не закрывай панель.");
+          return next();
+        }
+        if (j.http === 401 || j.http === 404 || j.http === 413) throw new Error("fatal:" + j.http);
+        throw new Error("retry");
+      })
+      .catch(function(e){
+        if (/^fatal|^offset/.test(e.message) || ++fails > 5) throw e;
+        upMsg("Связь прервалась, повторяю (" + fails + "/5)…");
+        return sleep(1500 * fails).then(next);
+      });
+  }
+  return next();
+}
+function startUpload(mode){
+  if (up.busy) return;
+  var f = up.file;
+  if (!f) { toast("Сначала выбери видео."); return; }
+  setBusy(true); upProgress(0, f.size); upMsg("Начинаю загрузку…");
+  var name = /\.[a-z0-9]{2,4}$/i.test(f.name) ? f.name : f.name + ".mp4";
+  api("/upload/start", {method:"POST", headers:{"Content-Type":"application/json"},
+       body: JSON.stringify({name:name, size:f.size, note:$("upNote").value.trim(), mode:mode})})
+  .then(function(j){
+    if (!j.ok) throw new Error(j.error === "size" ? "Файл больше 2 ГБ." : j.error === "type" ? "Это не видеофайл." :
+                               j.http === 401 ? "Доступ устарел — нажми 🔄 вверху и открой панель заново." : "Сервер не принял файл.");
+    return sendChunks(j.id, f, j.chunk || 8388608).then(function(){
+      upMsg("Проверяю файл…");
+      return api("/upload/finish?id=" + j.id, {method:"POST"});
+    });
+  })
+  .then(function(j){
+    if (!j.ok) throw new Error(j.error === "not a video" ? "Сервер не увидел в файле видео." : "Не удалось завершить загрузку.");
+    upProgress(1, 1);
+    upMsg(mode === "edit" ? "✅ Видео на сервере, монтаж запущен. Превью придёт в чат через ~35–45 минут, публикация — по кнопке 📤."
+                          : "✅ Видео на сервере, публикую в Instagram. Ссылка придёт в чат через 2–5 минут.", "ok");
+    up.file = null; $("upFile").value = ""; $("upName").classList.add("hide"); $("upNote").value = "";
+    try { tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred("success"); } catch(e){}
+    loadVideos();
+  })
+  .catch(function(e){
+    upMsg("❌ " + (/^[А-Я]/.test(e.message) ? e.message : "Загрузка не прошла (связь с сервером). Попробуй ещё раз или отправь видео через чат."), "err");
+  })
+  .then(function(){ setBusy(false); });
+}
+$("upEdit").onclick = function(){ startUpload("edit"); };
+$("upAsis").onclick = function(){
+  if (!up.file) { toast("Сначала выбери видео."); return; }
+  ask("Опубликовать в Instagram сразу, без монтажа? Удалить пост оттуда бот не сможет.", function(){ startUpload("asis"); });
+};
+
+var VSTATUS = {asking:"ждёт твоего решения в чате", downloading:"готовлю к монтажу", queued:"в очереди на монтаж", running:"монтаж идёт",
+  fixing:"вношу правки", ready:"превью готово — жми 📤 в чате", publishing:"публикую", posting:"публикую без монтажа",
+  published:"опубликовано", failed:"ошибка", cancelled:"отменено", raw:"быстрый вариант без монтажа"};
+function loadVideos(){
+  if (!(S.api && S.tk)) return;
+  api("/videos").then(function(j){
+    var box = $("vids"); box.innerHTML = "";
+    if (!j.ok) { box.appendChild(el("div", "empty", "Список недоступен.")); return; }
+    if (!j.videos.length) { box.appendChild(el("div", "empty", "Пока нет видео.")); return; }
+    j.videos.forEach(function(v){
+      var row = el("div", "vid"), d = new Date(v.created * 1000), pad = function(n){ return (n < 10 ? "0" : "") + n; };
+      var st = VSTATUS[v.status] || v.status || "—";
+      if (v.stage && (v.status === "queued" || v.status === "running" || v.status === "fixing")) st += " · " + v.stage;
+      row.appendChild(el("div", null, st.charAt(0).toUpperCase() + st.slice(1)));
+      var m = el("div", "m", pad(d.getDate()) + "." + pad(d.getMonth() + 1) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) +
+                 (v.note ? " · " + v.note : "") + (v.status === "failed" && v.error ? " · " + v.error : ""));
+      row.appendChild(m);
+      if (/^https:\/\//.test(v.url || "")) { var a = el("a", null, "Открыть пост"); a.href = v.url; a.target = "_blank"; a.rel = "noopener"; row.appendChild(a); }
+      box.appendChild(row);
+    });
+  }).catch(function(){ $("vids").innerHTML = ""; $("vids").appendChild(el("div", "empty", "Список недоступен.")); });
+}
+$("vidReload").onclick = loadVideos;
+window.addEventListener("beforeunload", function(e){ if (up.busy) { e.preventDefault(); e.returnValue = ""; } });
+
 if (L.tab) { var nb = document.querySelector('nav button[data-tab="' + L.tab + '"]'); if (nb) nb.click(); }
 render();
-loadSnapshot().then(function(s){ S = s || {}; render(); });
+loadSnapshot().then(function(s){ S = s || {}; render(); initUpload(); });
 window.__jai = {post: post, state: function(){ return {S:S, L:L, inTg:inTg}; }};
 })();
 </script>
