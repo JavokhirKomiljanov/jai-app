@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>JAI</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg:var(--tg-theme-bg-color,#0f1512);
+  --card:var(--tg-theme-secondary-bg-color,#18211d);
+  --text:var(--tg-theme-text-color,#eef4f0);
+  --hint:var(--tg-theme-hint-color,#8fa39a);
+  --accent:#2fd4a3;
+  --accent-ink:#04261b;
+  --line:rgba(128,128,128,.22);
+  --danger:#ff6b6b;
+  --warn:#ffb454;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{padding:0 0 calc(74px + env(safe-area-inset-bottom))}
+header{padding:14px 16px 6px;display:flex;align-items:center;gap:10px}
+header .logo{width:36px;height:36px;border-radius:11px;background:var(--accent);color:var(--accent-ink);
+  display:grid;place-items:center;font-weight:800;font-size:13px;letter-spacing:.5px;flex:none}
+header h1{font-size:17px;margin:0;line-height:1.15}
+header .sub{font-size:12px;color:var(--hint)}
+header .grow{flex:1;min-width:0}
+.iconbtn{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:10px;
+  width:36px;height:36px;font-size:16px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:4px 16px 8px}
+.chip{font-size:12px;padding:4px 9px;border-radius:999px;background:var(--card);color:var(--hint);white-space:nowrap}
+.chip b{color:var(--text);font-weight:600}
+.chip.live{color:var(--accent-ink);background:var(--accent)}
+main{padding:0 12px}
+section{display:none}
+section.on{display:block}
+.card{background:var(--card);border-radius:16px;padding:14px;margin:10px 0}
+.card h2{font-size:15px;margin:0 0 2px;display:flex;align-items:center;gap:8px}
+.card p.d{margin:0 0 10px;font-size:12.5px;color:var(--hint)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 0;min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+button.b{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);
+  border-radius:12px;padding:11px 10px;font:inherit;font-weight:600;font-size:14px;text-align:center;
+  min-height:44px;overflow-wrap:anywhere}
+button.b small{display:block;font-weight:400;font-size:11.5px;color:var(--hint);margin-top:1px}
+button.b:active{transform:scale(.98);opacity:.85}
+button.p{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.p small{color:rgba(4,38,27,.7)}
+button.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent)}
+button.dng{color:var(--danger);border-color:rgba(255,107,107,.45)}
+button.w{width:100%}
+textarea,input[type=text],input[type=url],input[type=number],select{
+  width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:12px;
+  padding:11px 12px;font:inherit;font-size:15px;outline:none}
+textarea{min-height:92px;resize:vertical}
+textarea:focus,input:focus{border-color:var(--accent)}
+label.f{display:block;font-size:12px;color:var(--hint);margin:8px 0 4px}
+.steps{margin:0 0 10px;padding:0;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;position:relative;padding:3px 0 3px 30px;font-size:13.5px}
+.steps li:before{content:counter(s);position:absolute;left:0;top:3px;width:21px;height:21px;border-radius:50%;
+  background:var(--bg);color:var(--accent);font-size:12px;font-weight:700;display:grid;place-items:center}
+.task{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+.task:first-of-type{border-top:0}
+.task .t{flex:1;min-width:0;font-size:13.5px}
+.task .m{font-size:11.5px;color:var(--hint)}
+.task .m .late{color:var(--danger)} .task .m .soon{color:var(--warn)}
+.task button{flex:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+  background:transparent;color:var(--accent);font-size:17px}
+.empty{font-size:13px;color:var(--hint);padding:6px 0}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav button{flex:1;border:0;background:transparent;color:var(--hint);font:inherit;font-size:11px;padding:5px 2px;
+  border-radius:10px;min-height:48px}
+nav button span{display:block;font-size:19px;line-height:1.2}
+nav button.on{color:var(--accent)}
+#toast{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));background:#000d;color:#fff;
+  padding:10px 12px;border-radius:12px;font-size:13px;display:none;z-index:9;word-break:break-word}
+.note{font-size:12px;color:var(--hint);margin-top:8px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">JAI</div>
+  <div class="grow">
+    <h1>Jay AI</h1>
+    <div class="sub" id="asof">панель управления ботом</div>
+  </div>
+  <button class="iconbtn" id="refresh" title="Обновить данные">🔄</button>
+</header>
+<div class="chips" id="chips"></div>
+
+<main>
+<!-- ============================== АГЕНТ -->
+<section id="s-agent" class="on">
+  <div class="card">
+    <h2>🛠 Задача агенту</h2>
+    <p class="d">Напиши задачу — Claude выполнит её на сервере и ответит в чате. Сюда же можно вставить ссылку на рилс.</p>
+    <textarea id="task" placeholder="Например: проверь, почему не вышел вчерашний пост, и почини"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="b p" id="sendTask">Отправить ➤</button>
+    </div>
+    <div class="note">Голосом и с файлами — как раньше, прямо в чате.</div>
+  </div>
+
+  <div class="card">
+    <h2>🎛 Режим</h2>
+    <p class="d">С кем ты сейчас разговариваешь в чате.</p>
+    <div class="grid2" id="modes">
+      <button class="b" data-mode="agent" data-cmd="/agent">🛠 Агент<small>делает на сервере</small></button>
+      <button class="b" data-mode="ask" data-cmd="/ask">📚 Вопросы<small>только чтение vault</small></button>
+      <button class="b" data-mode="jos" data-cmd="/jos">🖥 Jay OS<small>оператор задач</small></button>
+      <button class="b" data-mode="brand" data-cmd="/brand">🎯 Brand PM<small>личный бренд</small></button>
+    </div>
+    <label class="f">Советники</label>
+    <div class="grid2" id="advisors">
+      <button class="b" data-mode="advisor:cos" data-cmd="/cos">🧭 Chief of Staff</button>
+      <button class="b" data-mode="advisor:hr" data-cmd="/hr">🤝 HR</button>
+      <button class="b" data-mode="advisor:mkt" data-cmd="/mkt">📣 Маркетолог</button>
+      <button class="b" data-mode="advisor:fin" data-cmd="/fin">💰 Финансист</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🧠 Модель</h2>
+    <p class="d">Разговор при переключении продолжается.</p>
+    <div class="grid3" id="tiers">
+      <button class="b" data-tier="fable" data-cmd="/fable">Fable<small>самая сильная</small></button>
+      <button class="b" data-tier="opus" data-cmd="/opus">Opus<small>по умолчанию</small></button>
+      <button class="b" data-tier="sonnet" data-cmd="/sonnet">Sonnet<small>быстрая</small></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⏳ Задачи в работе</h2>
+    <p class="d" id="busy">Что сейчас выполняется, остановка.</p>
+    <div class="grid2">
+      <button class="b" data-cmd="/jobs">📋 Что идёт</button>
+      <button class="b" data-cmd="/new">🧹 Новый разговор</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input type="number" id="stopN" inputmode="numeric" placeholder="№ задачи" style="flex:0 0 110px">
+      <button class="b dng" id="stopOne">🛑 Остановить №</button>
+    </div>
+    <button class="b dng w" style="margin-top:8px" data-cmd="/stop" data-confirm="Остановить ВСЕ задачи?">🛑 Остановить все</button>
+  </div>
+</section>
+
+<!-- ============================== КОНТЕНТ -->
+<section id="s-content">
+  <div class="card">
+    <h2>🎬 Видео → пост в Instagram</h2>
+    <p class="d">W2W-монтаж: паузы, субтитры, графика, музыка, обложка.</p>
+    <ol class="steps">
+      <li>Нажми кнопку ниже — панель закроется.</li>
+      <li>Отправь видео в чат (в подписи можно дать указание: «обрежь последние 5 секунд»).</li>
+      <li>Через ~35–45 минут придёт превью. Публикация — только по кнопке 📤.</li>
+    </ol>
+    <button class="b p w" id="video">🎬 Запустить видео</button>
+    <div class="note">Файл уходит через чат: Telegram не даёт мини-аппу передать видео боту напрямую.</div>
+  </div>
+
+  <div class="card">
+    <h2>🔗 Рилс по ссылке</h2>
+    <p class="d">Смотрю чужой рилс → 5 хуков → сценарий → 🎞 версия с узбекскими субтитрами.</p>
+    <input type="url" id="link" placeholder="https://www.instagram.com/reel/…">
+    <button class="b p w" style="margin-top:8px" id="sendLink">Разобрать рилс</button>
+  </div>
+
+  <div class="card">
+    <h2>✨ Студия</h2>
+    <p class="d">Те же кнопки, что в «Студии»: тема → хуки, сценарий, идеи.</p>
+    <input type="text" id="topic" placeholder="Тема (для кнопок, где она нужна)">
+    <div class="grid2" id="studio" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h2>⏱ Автопубликация рилса</h2>
+    <p class="d" id="auto">Публиковать готовый рилс самому через N минут или только по 📤.</p>
+    <div class="row">
+      <input type="number" id="autoMin" inputmode="numeric" value="10" min="0" max="1440" style="flex:0 0 90px">
+      <button class="b" id="autoOn">Вкл · через N мин</button>
+      <button class="b" data-cmd="/autopost off">Выкл</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>💬 Комментарий → Direct</h2>
+    <p class="d">Кодовое слово в комментариях → ссылка в личку (вместо ManyChat).</p>
+    <div class="grid2">
+      <button class="b" data-cmd="/dm">📊 Статус и 7 дней</button>
+      <button class="b" data-cmd="/dm help">❔ Все команды</button>
+    </div>
+    <label class="f">Новое слово</label>
+    <input type="text" id="dmWord" placeholder="Слово, например Plus" autocapitalize="off">
+    <input type="url" id="dmLink" placeholder="Ссылка, которую отправлять" style="margin-top:6px">
+    <input type="url" id="dmReel" placeholder="Ссылка на рилс (пусто = все рилсы)" style="margin-top:6px">
+    <button class="b w" style="margin-top:8px" id="dmAdd">➕ Добавить слово</button>
+    <label class="f">Режим</label>
+    <div class="grid3">
+      <button class="b" data-cmd="/dm mode dry">dry</button>
+      <button class="b" data-cmd="/dm mode test">test</button>
+      <button class="b" data-cmd="/dm mode live" data-confirm="Включить LIVE: сообщения пойдут реальным людям?">live</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎯 Личный бренд</h2>
+    <p class="d">Brand PM: план на сегодня и недельный разбор.</p>
+    <div class="grid2">
+      <button class="b" data-cmd="/brief">☀️ План на сегодня</button>
+      <button class="b" data-cmd="/week">📅 Разбор недели</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎥 Higgsfield</h2>
+    <p class="d">Генерация видео и картинок для агента.</p>
+    <div class="grid2">
+      <button class="b" data-cmd="/hf">Статус</button>
+      <button class="b" data-cmd="/hf login">Войти</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== JAY OS -->
+<section id="s-jos">
+  <div class="card">
+    <h2>☑️ Открытые задачи</h2>
+    <p class="d">Из Jay OS. Галочка — отметить выполненной.</p>
+    <div id="tasks"></div>
+    <div class="grid3" style="margin-top:10px">
+      <button class="b" data-cmd="/tasks">Все</button>
+      <button class="b" data-cmd="/tasks cos">🧭</button>
+      <button class="b" data-cmd="/tasks hr">🤝</button>
+      <button class="b" data-cmd="/tasks mkt">📣</button>
+      <button class="b" data-cmd="/tasks fin">💰</button>
+      <button class="b" data-cmd="/publish">⬆️ Обновить JOS</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🧭 CEO-агент</h2>
+    <p class="d">Что сломано, какие решения ждут, отчёты. Или дай задачу — выберет агента.</p>
+    <div class="grid3">
+      <button class="b" data-cmd="/ceo">Статус</button>
+      <button class="b" data-cmd="/ceo week">Неделя</button>
+      <button class="b" data-cmd="/ceo month">Месяц</button>
+    </div>
+    <input type="text" id="ceoTask" placeholder="Задача для CEO" style="margin-top:8px">
+    <button class="b w" style="margin-top:8px" id="ceoSend">Поручить CEO</button>
+  </div>
+
+  <div class="card">
+    <h2>👥 Советники</h2>
+    <p class="d">Статус и перезапуск. Поговорить с советником — вкладка «Агент» → Режим.</p>
+    <button class="b w" data-cmd="/advisors">Статус советников</button>
+    <label class="f">Перезапустить</label>
+    <div class="grid2">
+      <button class="b" data-cmd="/run cos">🧭 CoS</button>
+      <button class="b" data-cmd="/run hr">🤝 HR</button>
+      <button class="b" data-cmd="/run mkt">📣 Маркетолог</button>
+      <button class="b" data-cmd="/run fin">💰 Финансист</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎓 W2W Academy</h2>
+    <p class="d">Агент канала: очередь постов, отчёт, лиды.</p>
+    <div class="grid3">
+      <button class="b" data-cmd="/academy status">Статус</button>
+      <button class="b" data-cmd="/academy queue">Очередь</button>
+      <button class="b" data-cmd="/academy report">Отчёт</button>
+      <button class="b" data-cmd="/academy leads">Лиды</button>
+      <button class="b" data-cmd="/academy go">▶️ Go</button>
+      <button class="b dng" data-cmd="/academy stop" data-confirm="Остановить Academy-агента?">⏸ Stop</button>
+    </div>
+    <label class="f">Пост из очереди</label>
+    <div class="row">
+      <input type="number" id="acN" inputmode="numeric" placeholder="№" style="flex:0 0 70px">
+      <button class="b" data-ac="show">Показать</button>
+      <button class="b" data-ac="now" data-confirm="Опубликовать этот пост сейчас?">Сейчас</button>
+      <button class="b dng" data-ac="cancel" data-confirm="Отменить этот пост?">Отмена</button>
+    </div>
+    <label class="f">Сгенерировать</label>
+    <div class="row">
+      <input type="text" id="acGen" placeholder="рубрика, напр. news">
+      <button class="b" id="acGenBtn" style="flex:0 0 120px">Создать</button>
+    </div>
+    <div class="grid2" style="margin-top:8px">
+      <button class="b" data-cmd="/academy day">План дня</button>
+      <button class="b" data-cmd="/academy shoots">Съёмки</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== СИСТЕМА -->
+<section id="s-sys">
+  <div class="card">
+    <h2>🖥 Сервер</h2>
+    <p class="d" id="srv">Состояние сервера и агентов.</p>
+    <div class="grid2">
+      <button class="b" data-cmd="/status">Статус</button>
+      <button class="b" data-cmd="/model">Какая модель</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>📞 Голосовой отчёт</h2>
+    <p class="d">Jarvis зачитает дневной отчёт голосовым сообщением.</p>
+    <button class="b p w" data-cmd="/hisobot">Получить отчёт</button>
+  </div>
+  <div class="card">
+    <h2>⚙️ Бот</h2>
+    <p class="d">Служебное.</p>
+    <div class="grid2">
+      <button class="b" data-cmd="/help">❔ Справка</button>
+      <button class="b" id="refresh2">🔄 Обновить панель</button>
+    </div>
+    <button class="b dng w" style="margin-top:8px" data-cmd="/restart" data-confirm="Перезапустить бота?">♻️ Перезапустить бота</button>
+  </div>
+  <div class="note" style="padding:0 6px 10px">Панель ничего не меняет в боте: каждая кнопка отправляет ту же команду, что ты написал бы в чат. Ответ приходит в чат.</div>
+</section>
+</main>
+
+<nav>
+  <button class="on" data-tab="agent"><span>🛠</span>Агент</button>
+  <button data-tab="content"><span>🎬</span>Контент</button>
+  <button data-tab="jos"><span>☑️</span>Jay OS</button>
+  <button data-tab="sys"><span>⚙️</span>Система</button>
+</nav>
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var tg = (window.Telegram && window.Telegram.WebApp) || null;
+var inTg = !!(tg && tg.initData !== undefined && tg.sendData && tg.platform && tg.platform !== "unknown");
+var $ = function(id){ return document.getElementById(id); };
+var LS = "jai_app_v1";
+var S = {};                       // snapshot from the bot (URL fragment)
+var L = {};                       // local overrides: what was tapped after the snapshot was made
+
+try { L = JSON.parse(localStorage.getItem(LS) || "{}") || {}; } catch(e){ L = {}; }
+function saveL(){ try { localStorage.setItem(LS, JSON.stringify(L)); } catch(e){} }
+
+if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
+
+function toast(t){
+  var el = $("toast"); el.textContent = t; el.style.display = "block";
+  clearTimeout(toast.t); toast.t = setTimeout(function(){ el.style.display = "none"; }, 3200);
+}
+function haptic(){ try { tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+
+// ---- send to the bot (closes the panel; the answer arrives in the chat)
+function post(obj){
+  var raw = JSON.stringify(obj);
+  if (new Blob([raw]).size > 4000) { toast("Слишком длинный текст — отправь его прямо в чат."); return; }
+  haptic();
+  if (inTg) { tg.sendData(raw); }
+  else { toast("Предпросмотр (вне Telegram): " + raw); window.__lastPost = obj; }
+}
+function ask(text, yes){
+  if (inTg && tg.showConfirm) tg.showConfirm(text, function(ok){ if (ok) yes(); });
+  else if (window.confirm(text)) yes();
+}
+function cmd(text, confirmText){
+  var go = function(){ remember(text); render(); post({app:"jai", op:"cmd", text:text}); };
+  if (confirmText) ask(confirmText, go); else go();
+}
+
+// ---- optimistic local state so the panel is right on the next open without extra bot messages
+var MODE_OF = {"/agent":"agent","/ask":"ask","/jos":"jos","/brand":"brand","/cos":"advisor:cos","/hr":"advisor:hr","/mkt":"advisor:mkt","/fin":"advisor:fin"};
+function remember(text){
+  var now = Math.floor(Date.now()/1000), p = text.split(" ");
+  if (MODE_OF[p[0]] && p.length === 1) { L.mode = MODE_OF[p[0]]; L.modeTs = now; }
+  if (["/fable","/opus","/sonnet"].indexOf(p[0]) >= 0) { L.tier = p[0].slice(1); L.tierTs = now; }
+  if (p[0] === "/done" && p[1]) { L.done = L.done || {}; L.done[p[1]] = now; }
+  if (p[0] === "/autopost") { L.auto = p[1] === "off" ? "выключена — только по 📤" : "включена · через " + (p[2] || 10) + " мин"; L.autoTs = now; }
+  saveL();
+}
+function cur(key){
+  var ts = L[key + "Ts"] || 0;
+  return (ts > (S.ts || 0) && L[key] != null) ? L[key] : S[key];
+}
+
+// ---- snapshot from the fragment: #z=<deflate-raw, base64url>
+function unpack(s){
+  var b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (b64.length % 4) b64 += "=";
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  if (typeof DecompressionStream === "undefined") return Promise.reject(new Error("no DecompressionStream"));
+  var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Response(stream).text().then(JSON.parse);
+}
+function loadSnapshot(){
+  var m = /[#&]z=([^&]*)/.exec(location.hash || "");
+  if (!m) return Promise.resolve({});
+  return unpack(decodeURIComponent(m[1])).catch(function(){ return {}; });
+}
+
+// ---- render
+var MODE_NAME = {agent:"Агент", ask:"Вопросы", jos:"Jay OS", brand:"Brand PM", "advisor:cos":"Chief of Staff",
+                 "advisor:hr":"HR", "advisor:mkt":"Маркетолог", "advisor:fin":"Финансист", joschat:"Jay OS чат"};
+var TIER_NAME = {fable:"Fable", opus:"Opus", sonnet:"Sonnet"};
+var WHO = {cos:"🧭", hr:"🤝", mkt:"📣", fin:"💰"};
+
+function el(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function render(){
+  var mode = cur("mode") || "agent", tier = cur("tier") || "opus";
+  var chips = $("chips"); chips.innerHTML = "";
+  function chip(label, value, live){ var c = el("span", "chip" + (live ? " live" : "")); c.appendChild(document.createTextNode(label + " ")); c.appendChild(el("b", null, value)); chips.appendChild(c); }
+  chip("Режим", MODE_NAME[mode] || mode);
+  chip("Модель", TIER_NAME[tier] || tier);
+  if (S.busy) chip("⏳", "идут задачи", true);
+  if (S.ig && S.ig.f != null) chip("IG", String(S.ig.f));
+
+  if (S.ts) {
+    var d = new Date(S.ts * 1000), pad = function(n){ return (n < 10 ? "0" : "") + n; };
+    $("asof").textContent = "данные на " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + " · 🔄 обновить";
+  } else {
+    $("asof").textContent = inTg ? "без свежих данных — нажми 🔄" : "предпросмотр вне Telegram";
+  }
+
+  document.querySelectorAll("[data-mode]").forEach(function(b){ b.classList.toggle("sel", b.dataset.mode === mode); });
+  document.querySelectorAll("[data-tier]").forEach(function(b){ b.classList.toggle("sel", b.dataset.tier === tier); });
+  if (S.busy) $("busy").textContent = S.busy.split("\n").filter(function(l){ return l.indexOf("/stop") < 0; }).join(" · ");
+  if (cur("auto")) $("auto").textContent = "Сейчас: " + cur("auto");
+  if (S.srv) $("srv").textContent = S.srv;
+
+  renderTasks(); renderStudio();
+}
+
+function dueInfo(iso){
+  if (!iso) return null;
+  var d = new Date(iso + "T00:00:00"), t = new Date(); t.setHours(0,0,0,0);
+  var n = Math.round((d - t) / 86400000);
+  if (isNaN(n)) return null;
+  if (n < 0) return {cls:"late", text: iso + " · просрочено " + (-n) + " дн"};
+  if (n === 0) return {cls:"late", text: iso + " · сегодня"};
+  if (n <= 3) return {cls:"soon", text: iso + " · " + n + " дн"};
+  return {cls:"", text: iso};
+}
+function renderTasks(){
+  var box = $("tasks"); box.innerHTML = "";
+  var done = L.done || {};
+  var list = (S.tasks || []).filter(function(t){ return !(done[t.id] > (S.ts || 0)); });
+  if (!list.length) { box.appendChild(el("div", "empty", S.ts ? "Открытых задач нет." : "Список появится после 🔄. Кнопки ниже работают и так.")); return; }
+  list.forEach(function(t){
+    var row = el("div", "task"), body = el("div", "t");
+    body.appendChild(el("div", null, (WHO[t.who] || "•") + " " + t.text));
+    var meta = el("div", "m"); meta.appendChild(document.createTextNode(t.id + (t.due ? " · " : "")));
+    var di = dueInfo(t.due); if (di) meta.appendChild(el("span", di.cls, di.text));
+    body.appendChild(meta);
+    var ok = el("button", null, "✓"); ok.title = "Выполнено";
+    ok.onclick = function(){ cmd("/done " + t.id, "Отметить выполненной: " + t.id + "?"); };
+    row.appendChild(body); row.appendChild(ok); box.appendChild(row);
+  });
+}
+
+var STUDIO_FALLBACK = {m:[["__ideas__","reel"],["hooks","__stats__"]],
+  l:{"__ideas__":"💡 Банк идей","reel":"🎬 Рилс по теме","hooks":"🪝 Хуки","__stats__":"📈 Мои цифры"},
+  p:{reel:"Тема",hooks:"Тема"}, i:["__ideas__","__stats__"]};
+function renderStudio(){
+  var st = S.studio || STUDIO_FALLBACK, box = $("studio"); box.innerHTML = "";
+  (st.m || []).forEach(function(rowKeys){ rowKeys.forEach(function(key){
+    if (key === "__link__") return;                       // has its own card above
+    var b = el("button", "b", st.l[key] || key);
+    var needsTopic = (st.i || []).indexOf(key) < 0;
+    if (needsTopic) b.appendChild(el("small", null, "нужна тема"));
+    b.onclick = function(){
+      var topic = $("topic").value.trim();
+      if (needsTopic && !topic) { toast("Сначала впиши тему в поле выше."); $("topic").focus(); return; }
+      post({op:"run", key:key, topic:topic});               // the studio's own protocol, handled by studio_app
+    };
+    box.appendChild(b);
+  }); });
+}
+
+// ---- wiring
+document.querySelectorAll("nav button").forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll("nav button").forEach(function(x){ x.classList.toggle("on", x === b); });
+    document.querySelectorAll("section").forEach(function(s){ s.classList.toggle("on", s.id === "s-" + b.dataset.tab); });
+    window.scrollTo(0, 0); L.tab = b.dataset.tab; saveL(); haptic();
+  };
+});
+document.addEventListener("click", function(e){
+  var b = e.target.closest("button[data-cmd]"); if (!b) return;
+  cmd(b.dataset.cmd, b.dataset.confirm);
+});
+function refresh(){ post({app:"jai", op:"refresh"}); }
+$("refresh").onclick = refresh; $("refresh2").onclick = refresh; $("asof").onclick = refresh;
+
+$("sendTask").onclick = function(){
+  var t = $("task").value.trim();
+  if (!t) { toast("Напиши задачу."); $("task").focus(); return; }
+  L.draft = ""; saveL();
+  post({app:"jai", op:"say", text:t});
+};
+$("task").value = L.draft || "";
+$("task").oninput = function(){ L.draft = $("task").value; saveL(); };
+
+$("stopOne").onclick = function(){
+  var n = parseInt($("stopN").value, 10);
+  if (!(n > 0)) { toast("Впиши номер задачи (см. «Что идёт»)."); return; }
+  cmd("/stop " + n);
+};
+$("video").onclick = function(){ post({app:"jai", op:"video"}); };
+$("sendLink").onclick = function(){
+  var u = $("link").value.trim();
+  if (!/instagram\.com\//i.test(u)) { toast("Нужна ссылка вида instagram.com/reel/…"); return; }
+  post({app:"jai", op:"say", text:u});
+};
+$("autoOn").onclick = function(){
+  var n = parseInt($("autoMin").value, 10); if (isNaN(n)) n = 10;
+  n = Math.max(0, Math.min(n, 1440));
+  cmd("/autopost on " + n, "Публиковать рилс автоматически через " + n + " мин?");
+};
+$("dmAdd").onclick = function(){
+  var w = $("dmWord").value.trim(), l = $("dmLink").value.trim(), r = $("dmReel").value.trim();
+  if (!w || /\s/.test(w)) { toast("Слово — одно, без пробелов."); return; }
+  if (!/^https?:\/\/\S+$/i.test(l)) { toast("Нужна ссылка, начинающаяся с https://"); return; }
+  if (r && !/^https?:\/\/\S+$/i.test(r)) { toast("Ссылка на рилс должна начинаться с https://"); return; }
+  cmd("/dm add " + w + " " + l + (r ? " " + r : ""));
+};
+$("ceoSend").onclick = function(){
+  var t = $("ceoTask").value.trim();
+  if (!t) { toast("Напиши задачу для CEO."); return; }
+  cmd("/ceo " + t);
+};
+document.querySelectorAll("[data-ac]").forEach(function(b){
+  b.onclick = function(){
+    var n = parseInt($("acN").value, 10);
+    if (!(n > 0)) { toast("Впиши номер поста из очереди."); return; }
+    cmd("/academy " + b.dataset.ac + " " + n, b.dataset.confirm);
+  };
+});
+$("acGenBtn").onclick = function(){
+  var r = $("acGen").value.trim();
+  if (!r || /\s/.test(r)) { toast("Рубрика — одно слово, например news."); return; }
+  cmd("/academy gen " + r);
+};
+
+if (L.tab) { var nb = document.querySelector('nav button[data-tab="' + L.tab + '"]'); if (nb) nb.click(); }
+render();
+loadSnapshot().then(function(s){ S = s || {}; render(); });
+window.__jai = {post: post, state: function(){ return {S:S, L:L, inTg:inTg}; }};
+})();
+</script>
+</body>
+</html>
